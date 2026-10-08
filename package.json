@@ -1,0 +1,95 @@
+{
+  "name": "@shivam-dhyani/sheet-diff",
+  "version": "0.1.0",
+  "description": "Identity-aware, formula-aware comparison and assisted three-way merge for spreadsheets (.xlsx/.xlsm/.xls/.csv). The open-source engine behind SheetLens.",
+  "license": "MIT",
+  "author": "Shivam Dhyani",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "sheet-diff": "./dist/cli.cjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js",
+      "require": "./dist/cli.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:golden": "vitest run test/golden",
+    "cli": "tsx bin/cli.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "excel",
+    "xlsx",
+    "diff",
+    "spreadsheet",
+    "compare",
+    "merge",
+    "three-way-merge",
+    "csv",
+    "formula",
+    "sheetlens"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shivam-Dhyani/sheet-diff.git"
+  },
+  "homepage": "https://github.com/Shivam-Dhyani/sheet-diff#readme",
+  "bugs": {
+    "url": "https://github.com/Shivam-Dhyani/sheet-diff/issues"
+  },
+  "dependencies": {
+    "@formulajs/formulajs": "^4.4.9",
+    "diff-sequences": "^29.6.3",
+    "fflate": "^0.8.2",
+    "xlsx": "^0.18.5"
+  },
+  "optionalDependencies": {
+    "officecrypto-tool": "^1.4.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9.17.0",
+    "fast-check": "^3.23.1",
+    "prettier": "^3.4.2",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

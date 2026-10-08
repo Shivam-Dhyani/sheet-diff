@@ -1,0 +1,7 @@
+# Daily project logs are append-only; union-merge so parallel branches never conflict (ADR-15).
+logs/*.md merge=union
+
+# Treat fixture spreadsheets as binary.
+*.xlsx binary
+*.xlsm binary
+*.xls binary
