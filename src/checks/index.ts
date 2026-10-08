@@ -360,8 +360,9 @@ function monthName(ymd: Ymd): string {
 
 /* ─────────────────────────── CHK-05 ─────────────────────────── */
 function chk05(p: PairCtx, ctx: CheckContext, out: Finding[]): void {
-  const idCol = findIdColumn(p.newSheet, ctx.newWb.pool, p.newTable);
-  const nameCol = findNameColumn(p.newSheet, ctx.newWb.pool, p.newTable, idCol);
+  const exclude = new Set(p.newKeyCols ?? []);
+  const idCol = findIdColumn(p.newSheet, ctx.newWb.pool, p.newTable, exclude);
+  const nameCol = findNameColumn(p.newSheet, ctx.newWb.pool, p.newTable, idCol, exclude);
   if (idCol < 0 || nameCol < 0) return;
 
   const oldMap = nameToIds(p.oldSheet, ctx.oldWb.pool, p.oldTable, nameCol, idCol);
@@ -401,14 +402,27 @@ function chk05(p: PairCtx, ctx: CheckContext, out: Finding[]): void {
   }
 }
 
-const ID_HEADER_RE = /(gstin|pan|id|code|no\.?|number)/i;
+const ID_STRONG_RE = /(gstin|pan)/i;
+const ID_HEADER_RE = /(id|code|no\.?|number)/i;
 const ID_VALUE_RE = /^[A-Z0-9\-/]{6,}$/;
 
-function findIdColumn(sheet: SheetIR, pool: StringPool, table: TableModel): number {
+function findIdColumn(
+  sheet: SheetIR,
+  pool: StringPool,
+  table: TableModel,
+  exclude: Set<number>,
+): number {
+  // Prefer a GSTIN/PAN column (the entity identifier CHK-05 is about), then
+  // other ID-like headers, then value-based detection. The row key (e.g.
+  // "Invoice No") is excluded — it is unique per row and never the entity ID.
   for (const col of table.columns) {
-    if (ID_HEADER_RE.test(col.header)) return col.index;
+    if (!exclude.has(col.index) && ID_STRONG_RE.test(col.header)) return col.index;
   }
   for (const col of table.columns) {
+    if (!exclude.has(col.index) && ID_HEADER_RE.test(col.header)) return col.index;
+  }
+  for (const col of table.columns) {
+    if (exclude.has(col.index)) continue;
     let nonEmpty = 0;
     let idLike = 0;
     for (let r = table.dataStart; r <= table.dataEnd; r++) {
@@ -422,9 +436,15 @@ function findIdColumn(sheet: SheetIR, pool: StringPool, table: TableModel): numb
   return -1;
 }
 
-function findNameColumn(sheet: SheetIR, pool: StringPool, table: TableModel, idCol: number): number {
+function findNameColumn(
+  sheet: SheetIR,
+  pool: StringPool,
+  table: TableModel,
+  idCol: number,
+  exclude: Set<number>,
+): number {
   for (const col of table.columns) {
-    if (col.index === idCol) continue;
+    if (col.index === idCol || exclude.has(col.index)) continue;
     let text = 0;
     let nonEmpty = 0;
     for (let r = table.dataStart; r <= table.dataEnd; r++) {

@@ -16,11 +16,14 @@ export function positionalBaseline(
   date1904Old: boolean,
   date1904New: boolean,
   opts: CompareOptions,
+  /** Inclusive row window — the union of both data ranges (TDD §7.8). */
+  rowStart = 0,
+  rowEnd?: number,
 ): number {
-  const rows = Math.max(oldSheet.rows, newSheet.rows);
+  const lastRow = rowEnd ?? Math.max(oldSheet.rows, newSheet.rows) - 1;
   const cols = Math.max(oldSheet.cols, newSheet.cols);
   let diff = 0;
-  for (let r = 0; r < rows; r++) {
+  for (let r = Math.max(0, rowStart); r <= lastRow; r++) {
     for (let c = 0; c < cols; c++) {
       const a = getCell(oldSheet, oldPool, r, c);
       const b = getCell(newSheet, newPool, r, c);

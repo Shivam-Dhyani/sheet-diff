@@ -10,6 +10,9 @@ const INR = new Intl.NumberFormat('en-IN', {
 });
 
 export function isAmountColumn(header: string): boolean {
+  // A percentage column (e.g. "GST %") is not a currency amount, even though it
+  // contains "gst"/"rate"/etc.
+  if (header.includes('%')) return false;
   return AMOUNT_HEADER_RE.test(header);
 }
 

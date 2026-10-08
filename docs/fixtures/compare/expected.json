@@ -1,0 +1,62 @@
+{
+  "fixture": "compare/sales-register-sep2026",
+  "description": "Client sent v1, then 'FINAL with small corrections'. Fictional data. Ground truth for the compare engine (TDD §15.2 golden tests).",
+  "old": "Sales_Register_Sep2026_v1.xlsx",
+  "new": "Sales_Register_Sep2026_FINAL.xlsx",
+  "sheets": [
+    {
+      "name": "Sales Register",
+      "status": "matched",
+      "headerRow": 4,
+      "keyColumn": "Invoice No",
+      "rowsAdded": ["INV-1013", "INV-1031"],
+      "rowsRemoved": ["INV-1019"],
+      "cellChanges": [
+        { "key": "INV-1004", "column": "Customer GSTIN", "kind": "value_changed", "old": "24AAMFD6041L1Z7", "new": "24AAMFD6041L1Z8" },
+        { "key": "INV-1008", "column": "Qty", "kind": "value_changed", "old": 90, "new": 45 },
+        { "key": "INV-1015", "column": "GST Amount (₹)", "kind": "formula_overwritten", "old": 1036.8, "new": 1063.8, "oldFormula": "=I18*J18" },
+        { "key": "INV-1022", "column": "GST %", "kind": "value_changed", "old": 0.18, "new": 0.05 },
+        { "key": "INV-1029", "column": "Invoice Date", "kind": "value_changed", "old": "2026-09-29", "new": "2026-10-02" }
+      ],
+      "recalculated": [
+        { "key": "INV-1008", "column": "Taxable Value (₹)", "old": 37800, "new": 18900 },
+        { "key": "INV-1008", "column": "GST Amount (₹)", "old": 6804, "new": 3402 },
+        { "key": "INV-1008", "column": "Invoice Total (₹)", "old": 44604, "new": 22302 },
+        { "key": "INV-1015", "column": "Invoice Total (₹)", "old": 6796.8, "new": 6823.8 },
+        { "key": "INV-1022", "column": "GST Amount (₹)", "old": 21060, "new": 5850 },
+        { "key": "INV-1022", "column": "Invoice Total (₹)", "old": 138060, "new": 122850 }
+      ]
+    },
+    {
+      "name": "Summary",
+      "status": "matched",
+      "keyColumn": "Particulars",
+      "cellChanges": [],
+      "formulaChanges": [],
+      "note": "Summary formula ranges are identical (rows 5–33) in both files: the insert of INV-1013 and delete of INV-1019 cancel out. No formula change must be reported.",
+      "recalculated": [
+        { "key": "Total taxable value (₹)", "column": "Amount", "old": 1337004, "new": 1417774 },
+        { "key": "Taxable value @ 5% (₹)", "column": "Amount", "old": 175000, "new": 292000 },
+        { "key": "Taxable value @ 18% (₹)", "column": "Amount", "old": 1162004, "new": 1125774 },
+        { "key": "Total GST payable (₹)", "column": "Amount", "old": 217910.72, "new": 217266.32 },
+        { "key": "Total invoice value (₹)", "column": "Amount", "old": 1554914.72, "new": 1635040.32 }
+      ]
+    },
+    { "name": "Credit Notes", "status": "added" }
+  ],
+  "checks": [
+    { "rule": "CHK-01", "severity": "high", "sheet": "Sales Register", "key": "INV-1015", "column": "GST Amount (₹)" },
+    { "rule": "CHK-02", "severity": "high", "sheet": "Summary", "cells": ["B4", "B5", "B6", "B7", "B8", "B9"], "rangeEndRow": 33, "excludedKeys": ["INV-1031"] },
+    { "rule": "CHK-03", "severity": "high", "removedKey": "INV-1019", "referencedAt": "Credit Notes!B4" },
+    { "rule": "CHK-04", "severity": "high", "sheet": "Sales Register", "key": "INV-1029", "column": "Invoice Date", "period": "2026-09" },
+    { "rule": "CHK-05", "severity": "medium", "sheet": "Sales Register", "entity": "Desai Traders", "idColumn": "Customer GSTIN", "values": ["24AAMFD6041L1Z7", "24AAMFD6041L1Z8"], "changedKey": "INV-1004" },
+    { "rule": "CHK-09", "severity": "info", "sheetAdded": "Credit Notes" }
+  ],
+  "flags": [
+    { "rule": "CHK-08", "note": "large change flag attached to an existing cell change, not a separate finding", "key": "INV-1008", "column": "Qty" },
+    { "rule": "CHK-08", "key": "INV-1022", "column": "GST %" }
+  ],
+  "mustNotFire": ["CHK-06", "CHK-07", "CHK-10"],
+  "summaryCounts": { "high": 4, "rowsAdded": 2, "rowsRemoved": 1, "cellsEditedByHand": 4, "formulasOverwritten": 1, "sheetsAdded": 1 },
+  "positionalBaseline": { "Sales Register": 89, "note": "What a naive same-address comparison flags; shown in the UI as contrast only." }
+}

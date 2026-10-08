@@ -274,6 +274,8 @@ function compareCore(oldWb: WorkbookIR, newWb: WorkbookIR, options: CompareOptio
       oldWb.date1904,
       newWb.date1904,
       options,
+      Math.min(oldTable.dataStart, newTable.dataStart),
+      Math.max(oldTable.dataEnd, newTable.dataEnd),
     );
 
     checkPairs.push({

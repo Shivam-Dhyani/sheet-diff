@@ -22,14 +22,19 @@ function checkAbort(signal?: AbortFlag): void {
   if (signal?.aborted) throw new SheetDiffError('ABORTED', 'Reading was cancelled.');
 }
 
-/** Is a SheetJS number-format string a date/time format? */
-function isDateFormat(z: unknown): boolean {
+/**
+ * Is a number-format string a date/time format? Implemented directly rather
+ * than via `XLSX.SSF.is_date`, which is not exposed on the ESM named import of
+ * SheetJS 0.18.5 (see IMPLEMENTATION_NOTES.md). We strip escaped characters,
+ * quoted literals and bracketed sections, then look for date/time tokens.
+ */
+export function isDateFormat(z: unknown): boolean {
   if (typeof z !== 'string' || z === '') return false;
-  try {
-    return XLSX.SSF.is_date(z);
-  } catch {
-    return false;
-  }
+  const cleaned = z
+    .replace(/\\./g, '')
+    .replace(/"[^"]*"/g, '')
+    .replace(/\[[^\]]*\]/g, '');
+  return /[ymdhs]/i.test(cleaned);
 }
 
 /**
@@ -49,7 +54,10 @@ export function readWithSheetJs(bytes: Uint8Array, opts: AdapterOptions): Workbo
       // See IMPLEMENTATION_NOTES.md.
       dense: false,
       cellFormula: !opts.valuesOnly,
-      cellNF: opts.compareNumberFormats,
+      // Always read number formats so date-formatted serials can be tagged as
+      // dates (CHK-04 / BR-C5). The format string itself is only stored in the
+      // IR when `compareNumberFormats` is on (see setFromCell).
+      cellNF: true,
       cellDates: false,
       cellStyles: false,
     });
