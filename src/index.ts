@@ -15,6 +15,41 @@ export { readWorkbook, isEncrypted } from './read/index.js';
 export { analyzePair, compareWorkbooks, runChecks } from './compare/index.js';
 export type { PairAnalysis, PairSetup } from './compare/index.js';
 
+// Assisted merge (TDD §9). Patch writer (§10) arrives in a later increment.
+export {
+  planMerge,
+  resolveMerge,
+  previewImpact,
+  buildMergeLog,
+  mergeDiff,
+  computeExtendRanges,
+  isTypedCell,
+} from './merge/index.js';
+export type {
+  MergePlan,
+  Proposal,
+  Conflict,
+  ConflictType,
+  MergeSource,
+  Resolutions,
+  ConflictResolution,
+  CellResolution,
+  RelatedResolution,
+  DeleteEditResolution,
+  MergeChangeSet,
+  ChangeSetCellEdit,
+  ChangeSetRowInsert,
+  ChangeSetRowDelete,
+  ChangeSetExtendRange,
+  ImpactRow,
+  MergeLogRow,
+  CellEdit,
+  RowCell,
+  StructureDiff,
+  MergeOptions,
+  ResolveOptions,
+} from './merge/index.js';
+
 // Options
 export {
   DEFAULT_COMPARE_OPTIONS,

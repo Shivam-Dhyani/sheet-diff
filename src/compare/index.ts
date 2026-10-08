@@ -62,7 +62,7 @@ export function analyzePair(
   };
 }
 
-interface CoreResult {
+export interface CoreResult {
   result: Omit<CompareResult, 'findings'>;
   checkContext: CheckContext;
 }
@@ -103,7 +103,7 @@ function displayKey(sheet: SheetIR, pool: StringPool, cols: number[], row: numbe
   return parts.join(' / ');
 }
 
-function compareCore(oldWb: WorkbookIR, newWb: WorkbookIR, options: CompareOptions): CoreResult {
+export function compareCore(oldWb: WorkbookIR, newWb: WorkbookIR, options: CompareOptions): CoreResult {
   const start = Date.now();
   const prepared = preparePairs(oldWb, newWb, options);
 

@@ -4,6 +4,7 @@ import { basename } from 'node:path';
 import process from 'node:process';
 import { readWorkbook } from '../src/read/index.js';
 import { analyzePair, compareWorkbooks } from '../src/compare/index.js';
+import { planMerge } from '../src/merge/plan.js';
 import { isSheetDiffError } from '../src/errors.js';
 import type { CompareOptions } from '../src/options.js';
 import type { CompareResult } from '../src/types.js';
@@ -37,7 +38,7 @@ const HELP = `sheet-diff — compare two spreadsheets (identity-aware, formula-a
 
 Usage:
   sheet-diff <old> <new> [--json] [--key "Invoice No"] [--password PW]
-  sheet-diff merge <base> <a> <b> [--json]        (coming in a later release)
+  sheet-diff merge <base> <copy1> <copy2> [--json]
 
 Options:
   --json         Emit machine-readable JSON instead of a human summary
@@ -54,8 +55,7 @@ async function main(): Promise<void> {
   }
 
   if (args.positionals[0] === 'merge') {
-    process.stderr.write('Merge is not available yet in this release.\n');
-    process.exitCode = 2;
+    await runMerge(args);
     return;
   }
 
@@ -90,6 +90,49 @@ async function main(): Promise<void> {
   } else {
     printHuman(result, basename(oldPath!), basename(newPath!));
   }
+}
+
+async function runMerge(args: Args): Promise<void> {
+  // sheet-diff merge <base> <copy1> <copy2> [--json]
+  const [, basePath, aPath, bPath] = args.positionals;
+  if (!basePath || !aPath || !bPath) {
+    process.stderr.write('Expected three files: sheet-diff merge <base> <copy1> <copy2>\n');
+    process.exitCode = 2;
+    return;
+  }
+  const rd = async (p: string) =>
+    readWorkbook(new Uint8Array(await readFile(p)), {
+      fileName: basename(p),
+      keepSourceBytes: true,
+      ...(args.password ? { password: args.password } : {}),
+    });
+  const base = await rd(basePath);
+  const a = await rd(aPath);
+  const b = await rd(bPath);
+  const plan = planMerge(base, a, b);
+
+  if (args.json) {
+    process.stdout.write(JSON.stringify(plan, null, 2) + '\n');
+    return;
+  }
+
+  const w = process.stdout.write.bind(process.stdout);
+  w(`\nSheetLens / sheet-diff — assisted merge\n`);
+  w(`Key column: ${plan.keyColumns.join(' / ') || '(none)'}\n`);
+  w(`\n${plan.proposals.length} auto-proposal(s), ${plan.conflicts.length} conflict(s) to resolve.\n`);
+  if (plan.conflicts.length > 0) {
+    w('\nConflicts:\n');
+    for (const c of plan.conflicts) {
+      w(`  • [${c.type}] ${c.key ?? ''}${c.column ? ` · ${c.column}` : ''}\n`);
+    }
+  }
+  w('\nAuto-proposals (pre-ticked):\n');
+  for (const p of plan.proposals) {
+    if (p.kind === 'cell') w(`  • ${p.key} · ${p.column}: → ${JSON.stringify(p.value)} (${p.source})\n`);
+    else if (p.kind === 'row_add') w(`  • add ${p.key} after ${p.afterKey} (${p.source})\n`);
+    else w(`  • delete ${p.key} (${p.source})\n`);
+  }
+  w('\n(Resolve conflicts, then download the patched copy — patch writer lands in the next release.)\n');
 }
 
 function toJson(result: CompareResult): unknown {

@@ -28,5 +28,8 @@ The open-source engine behind SheetLens. Pure TypeScript, no DOM, runs in Node
 - Golden fixtures live in `docs/fixtures/`; `test/golden` skips until they exist.
 
 ## Status
-Increment 1 shipped: the compare engine (read → compare → checks) + CLI.
-Next: assisted merge (`src/merge`), patch writer (`src/patch`), report model.
+- Increment 1: compare engine (read → compare → checks) + CLI. ✅
+- Increment 2: assisted-merge engine `src/merge` (plan, resolve, impact, log) +
+  CLI `merge`. ✅ (golden-tested against `docs/fixtures/merge`)
+Next: the patch writer (`src/patch`, TDD §10) — writes the merged `.xlsx` and
+is validated by LibreOffice recalc — then the report model (`src/report`).

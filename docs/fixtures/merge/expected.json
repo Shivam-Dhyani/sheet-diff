@@ -1,0 +1,55 @@
+{
+  "fixture": "merge/sales-register-sep2026",
+  "description": "One original sent to two people; each returned an edited copy. Ground truth for assisted merge (TDD §15.2 golden tests). Fictional data.",
+  "original": "Sales_Register_Sep2026_ORIGINAL.xlsx",
+  "copy1": { "file": "Sales_Register_Sep2026_RAVI.xlsx", "label": "Ravi" },
+  "copy2": { "file": "Sales_Register_Sep2026_PRIYA.xlsx", "label": "Priya" },
+  "keyColumn": "Invoice No",
+  "autoMergeProposals": [
+    { "type": "cell", "key": "INV-1022", "column": "GST %", "from": "Ravi", "base": 0.18, "value": 0.05 },
+    { "type": "cell", "key": "INV-1016", "column": "Rate (₹)", "from": "Ravi", "base": 420, "value": 440 },
+    { "type": "cell", "key": "INV-1010", "column": "Customer Name", "from": "Priya", "base": "Bhatt & Sons", "value": "Bhatt and Sons" },
+    { "type": "row_added", "key": "INV-1013", "from": "Priya", "insertAfterKey": "INV-1012" },
+    { "type": "row_added", "key": "INV-1031", "from": "Priya", "insertAfterKey": "INV-1030" }
+  ],
+  "conflicts": [
+    { "type": "CELL", "key": "INV-1003", "column": "Qty", "base": 25, "Ravi": 30, "Priya": 28 },
+    { "type": "RELATED_EDITS", "key": "INV-1008", "Ravi": [{ "column": "Qty", "base": 90, "value": 45 }], "Priya": [{ "column": "Rate (₹)", "base": 420, "value": 210 }], "why": "Both edited different input cells of the same row; accepting both would cut the invoice to a quarter." },
+    { "type": "DELETE_EDIT", "key": "INV-1019", "deletedBy": "Ravi", "editedBy": "Priya", "edits": [{ "column": "Customer Name", "base": "Shah Electricals", "value": "Shah Electricals Pvt Ltd" }] }
+  ],
+  "notChanges": [
+    "Summary formula ranges shrank in Ravi's copy (row delete) and grew in Priya's copy (row insert). These are Excel's automatic range adjustments and MUST NOT be reported as formula changes or conflicts."
+  ],
+  "testResolution": {
+    "INV-1003": "Ravi",
+    "INV-1008": "Ravi",
+    "INV-1019": "delete",
+    "acceptAllAutoProposals": true,
+    "extendTotalsToNewRows": true
+  },
+  "expectedOutputWithTestResolution": {
+    "sheet": "Sales Register",
+    "invoiceCount": 30,
+    "orderExcerpt": ["INV-1011", "INV-1012", "INV-1013", "INV-1014"],
+    "lastRows": ["INV-1029", "INV-1030", "INV-1031"],
+    "cells": [
+      { "key": "INV-1003", "column": "Qty", "value": 30 },
+      { "key": "INV-1008", "column": "Qty", "value": 45 },
+      { "key": "INV-1008", "column": "Rate (₹)", "value": 420 },
+      { "key": "INV-1016", "column": "Rate (₹)", "value": 440 },
+      { "key": "INV-1022", "column": "GST %", "value": 0.05 },
+      { "key": "INV-1010", "column": "Customer Name", "value": "Bhatt and Sons" }
+    ],
+    "summaryAfterExcelRecalculates": {
+      "Number of invoices": 30,
+      "Total taxable value (₹)": 1484624,
+      "Taxable value @ 5% (₹)": 292000,
+      "Taxable value @ 18% (₹)": 1192624,
+      "Total GST payable (₹)": 229272.32,
+      "Total invoice value (₹)": 1713896.32
+    },
+    "summaryRangesEndRow": 34,
+    "ifExtendTotalsIsOff": { "check": "CHK-02 warns that INV-1031 is excluded", "Number of invoices": 29, "Total taxable value (₹)": 1427924, "Total GST payable (₹)": 219066.32 },
+    "mergeLogSheet": "SheetLens Merge Log lists 8 applied changes (5 auto + 3 resolved) with who/what/old/new"
+  }
+}
