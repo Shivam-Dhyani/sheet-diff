@@ -8,3 +8,5 @@ before touching the code (ADR-15).
 - `logs/*.md` is `merge=union` in `.gitattributes`, so parallel branches never
   conflict here.
 - Logs are committed alongside the code they describe.
+- **Dates are IST (Asia/Kolkata), not UTC.** Name each file by the current IST
+  date: `TZ=Asia/Kolkata date '+%Y-%m-%d'`.

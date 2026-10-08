@@ -25,6 +25,7 @@ The open-source engine behind SheetLens. Pure TypeScript, no DOM, runs in Node
 ## Workflow
 - `pnpm lint && pnpm typecheck && pnpm test && pnpm build` before committing.
 - Add a short entry to `logs/YYYY-MM-DD.md` for each meaningful change (ADR-15).
+  Date the file by **IST** (Asia/Kolkata): `TZ=Asia/Kolkata date '+%Y-%m-%d'`.
 - Golden fixtures live in `docs/fixtures/`; `test/golden` skips until they exist.
 
 ## Status
