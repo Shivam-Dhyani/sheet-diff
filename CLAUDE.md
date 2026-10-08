@@ -32,5 +32,10 @@ The open-source engine behind SheetLens. Pure TypeScript, no DOM, runs in Node
 - Increment 1: compare engine (read → compare → checks) + CLI. ✅
 - Increment 2: assisted-merge engine `src/merge` (plan, resolve, impact, log) +
   CLI `merge`. ✅ (golden-tested against `docs/fixtures/merge`)
-Next: the patch writer (`src/patch`, TDD §10) — writes the merged `.xlsx` and
-is validated by LibreOffice recalc — then the report model (`src/report`).
+- Increment 3: patch writer `src/patch` (§10) — writes the merged `.xlsx`
+  (cell edits, row insert/delete with formula re-anchoring, extend-totals,
+  Merge Log sheet, fullCalcOnLoad, blockers, CSV, optional re-encrypt),
+  self-check, CLI `merge --out`. ✅ (golden recalculates in LibreOffice to the
+  expected Summary)
+Next: the report model (`src/report`, FR-REP) — Excel/HTML/copy-summary — using
+`docs/fixtures/compare/reference_report_prototype.xlsx` as the visual reference.

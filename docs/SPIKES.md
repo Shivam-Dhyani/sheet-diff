@@ -6,7 +6,7 @@ taken.
 | Spike | Goal | Status |
 |---|---|---|
 | S1 | Decrypt in a worker: Agile/Standard `.xlsx`, `.xls` RC4; re-encrypt output opens in Excel | **Pending** — `officecrypto-tool` wired behind `read/decrypt.ts` with `ENCRYPTION_UNSUPPORTED` fallback |
-| S2 | Patch writer minimum: one cell edit + one row insert on the merge fixture → opens in Excel with no repair | **Pending** (merge increment M6/M7) |
+| S2 | Patch writer minimum: one cell edit + one row insert on the merge fixture → opens in Excel with no repair | **PASS** — the full merge fixture (5 edits + 1 delete + 2 inserts + extend-totals + Merge Log) patches and **recalculates correctly in LibreOffice headless** (golden test); real-desktop-Excel pass is the manual §15.5 check |
 | S3 | SheetJS: 100k-row parse time/memory; shared-formula expansion; DTD behaviour | **Partial** — reader built against SheetJS dense mode; shared-formula expansion handled in `read/sheetjs-adapter.ts`; perf benchmarks to run in `bench/` |
 | S4 | Vite + React Router prerender + worker + PWA + ExcelJS under CSP on Cloudflare Pages | **Pending** (app repo `sheet-lens`) |
 

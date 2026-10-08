@@ -50,6 +50,10 @@ export type {
   ResolveOptions,
 } from './merge/index.js';
 
+// Patch writer (TDD §10) — writes the merged .xlsx/.xlsm/.csv.
+export { applyMergePatch } from './patch/index.js';
+export type { PatchOutput, PatchOptions, BlockedOp, FidelityReport } from './patch/index.js';
+
 // Options
 export {
   DEFAULT_COMPARE_OPTIONS,
