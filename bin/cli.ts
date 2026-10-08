@@ -4,6 +4,7 @@ import { basename } from 'node:path';
 import process from 'node:process';
 import { readWorkbook } from '../src/read/index.js';
 import { analyzePair, compareWorkbooks } from '../src/compare/index.js';
+import { buildCopySummary } from '../src/report/index.js';
 import { planMerge } from '../src/merge/plan.js';
 import { resolveMerge } from '../src/merge/resolve.js';
 import { buildMergeLog } from '../src/merge/log.js';
@@ -233,6 +234,9 @@ function printHuman(result: CompareResult, oldName: string, newName: string): vo
   printSection(w, 'Needs attention (High)', high);
   printSection(w, 'To review (Medium)', medium);
   printSection(w, 'Info', info);
+  if (counts.realChanges > 0) {
+    w(`\nCopy summary:\n  ${buildCopySummary(result)}\n`);
+  }
   w(`\n(${total} cell change(s) across ${result.pairs.length} sheet pair(s).)\n`);
 }
 

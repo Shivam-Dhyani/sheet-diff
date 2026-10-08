@@ -106,14 +106,37 @@ number stored as text · `CHK-07` duplicate key introduced · `CHK-08` large
 numeric change (flag) · `CHK-09` sheet/column added/removed/renamed · `CHK-10`
 invalid GSTIN/PAN format.
 
+## Assisted merge
+
+```ts
+import { planMerge, resolveMerge, previewImpact, applyMergePatch } from '@shivam-dhyani/sheet-diff';
+
+const plan = planMerge(base, copyA, copyB, { labels: ['Ravi', 'Priya'] });
+// → auto-proposals + CELL / RELATED_EDITS / DELETE_EDIT conflicts
+const changeSet = resolveMerge(base, plan, resolutions, { extendTotals: true });
+previewImpact(base, changeSet);                 // totals before → after
+const { bytes } = await applyMergePatch(base, changeSet, { sourceLabels: ['Ravi', 'Priya'] });
+// → a patched copy of the Original: approved edits applied, rows inserted/
+//   deleted with formula ranges adjusted, a "SheetLens Merge Log" sheet added.
+```
+
+CLI: `sheet-diff merge base.xlsx a.xlsx b.xlsx --resolve INV-1003=Ravi --extend-totals --out merged.xlsx`.
+
+## Reports
+
+`buildReportModel(result, oldWb, newWb)` returns the structured report data
+(Overview, All Changes, per-sheet "marked" views). `buildCopySummary(result)`
+returns a ≤ 1,000-char plain-text summary for WhatsApp/email. The Excel and HTML
+renderers live in the SheetLens app.
+
 ## Limitations (this release)
 
-- Assisted three-way **merge**, the **patch writer**, and the **report model**
-  (TDD §9–§10, §6.3) are not yet implemented — they arrive in later increments.
 - The evaluator covers the common Excel functions (SUM/SUMIF(S)/COUNT.../
   AVERAGE.../MIN/MAX/ROUND.../IF/IFERROR/AND/OR/NOT/SUBTOTAL/SUMPRODUCT/
   VLOOKUP/INDEX/MATCH). Anything else degrades gracefully to "updates in Excel".
 - Password-protected files need the optional `officecrypto-tool` dependency.
+- Merge patch mode supports `.xlsx`/`.xlsm` and `.csv`; `.xls` originals must be
+  re-saved as `.xlsx` first.
 
 ## Privacy
 

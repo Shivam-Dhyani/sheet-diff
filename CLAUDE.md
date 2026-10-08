@@ -37,5 +37,10 @@ The open-source engine behind SheetLens. Pure TypeScript, no DOM, runs in Node
   Merge Log sheet, fullCalcOnLoad, blockers, CSV, optional re-encrypt),
   self-check, CLI `merge --out`. ✅ (golden recalculates in LibreOffice to the
   expected Summary)
-Next: the report model (`src/report`, FR-REP) — Excel/HTML/copy-summary — using
-`docs/fixtures/compare/reference_report_prototype.xlsx` as the visual reference.
+- Increment 4: report model `src/report` (§6.3) — `buildReportModel` (Overview,
+  All Changes, per-sheet marked rows) + `buildCopySummary` (FR-REP-03). ✅
+  Shaped to `reference_report_prototype.xlsx`. The ExcelJS/HTML renderers are
+  app-side (TDD §12.5, M5).
+The engine is now Phase-1 feature-complete (compare, merge, patch, report
+model). Next: the web app `sheet-lens` (M4 shell → results → reports → merge
+UI → PWA), which consumes this engine in a worker.

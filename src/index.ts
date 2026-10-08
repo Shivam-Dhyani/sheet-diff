@@ -54,6 +54,22 @@ export type {
 export { applyMergePatch } from './patch/index.js';
 export type { PatchOutput, PatchOptions, BlockedOp, FidelityReport } from './patch/index.js';
 
+// Report model (TDD §6.3 / FR-REP) — the data model + copy summary. Excel/HTML
+// rendering lives in the app.
+export { buildReportModel, buildCopySummary } from './report/index.js';
+export type { ReportOptions } from './report/index.js';
+export type { CopySummaryOptions } from './report/copy-summary.js';
+export type {
+  ReportModel,
+  ReportMeta,
+  ReportOverview,
+  ReportChange,
+  MarkedSheet,
+  MarkedRow,
+  MarkedCell,
+  RemovedRow,
+} from './report/types.js';
+
 // Options
 export {
   DEFAULT_COMPARE_OPTIONS,
