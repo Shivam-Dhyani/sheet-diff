@@ -9,6 +9,7 @@ import { planMerge } from '../src/merge/plan.js';
 import { resolveMerge } from '../src/merge/resolve.js';
 import { buildMergeLog } from '../src/merge/log.js';
 import { applyMergePatch } from '../src/patch/index.js';
+import { contrastCells } from '../src/compare/contrast.js';
 import type { Resolutions, ConflictResolution } from '../src/merge/types.js';
 import { writeFile } from 'node:fs/promises';
 import { isSheetDiffError } from '../src/errors.js';
@@ -184,7 +185,7 @@ async function runMerge(args: Args): Promise<void> {
     else if (p.kind === 'row_add') w(`  • add ${p.key} after ${p.afterKey} (${p.source})\n`);
     else w(`  • delete ${p.key} (${p.source})\n`);
   }
-  w('\n(Resolve conflicts, then download the patched copy — patch writer lands in the next release.)\n');
+  w('\n(Resolve each conflict with --resolve KEY=Copy1|Copy2|delete, then add --out merged.xlsx to write the patched copy.)\n');
 }
 
 function toJson(result: CompareResult): unknown {
@@ -211,7 +212,6 @@ function printHuman(result: CompareResult, oldName: string, newName: string): vo
   const { counts } = result;
   const w = process.stdout.write.bind(process.stdout);
   const total = result.pairs.reduce((s, p) => s + p.cellChanges.length, 0);
-  const positional = Object.values(result.positionalBaseline).reduce((s, n) => s + n, 0);
 
   w(`\nSheetLens / sheet-diff — ${newName} vs ${oldName}\n`);
   if (counts.realChanges === 0) {
@@ -220,7 +220,7 @@ function printHuman(result: CompareResult, oldName: string, newName: string): vo
     w(
       `${counts.realChanges} real change(s) found — ${counts.needsAttention} need your attention.\n`,
     );
-    w(`(A basic cell-by-cell compare would flag ${positional} cells.)\n`);
+    w(`(A basic cell-by-cell compare would flag ${contrastCells(result)} cells.)\n`);
   }
   w(
     `\nRows added: ${counts.rowsAdded} · Rows removed: ${counts.rowsRemoved} · ` +

@@ -1,7 +1,7 @@
 # @shivam-dhyani/sheet-diff
 
-> Identity-aware, formula-aware comparison (and, soon, assisted three-way merge)
-> for spreadsheets — the open-source engine behind **SheetLens**.
+> Identity-aware, formula-aware comparison and assisted three-way merge for
+> spreadsheets — the open-source engine behind **SheetLens**.
 
 Most "diff" tools compare cells at the same address, so inserting one row makes
 every row below look changed. `sheet-diff` instead **matches rows by identity**
@@ -15,8 +15,9 @@ and never sends your data anywhere.
 - MIT licensed
 - Reads `.xlsx`, `.xlsm`, `.xls`, `.csv` (and password-protected files when the
   optional decryptor is installed)
-- Pre-1.0 (`0.x`): the compare API is stable; merge/patch and report-model APIs
-  land in upcoming releases
+- Compare, assisted merge, patch writer and report model are all included
+- Pre-1.0 (`0.x`): the API may still change between minor versions. A caret range
+  like `^0.1.0` only accepts `0.1.x`, so you opt in to each new minor on purpose
 
 ## Install
 
@@ -76,6 +77,13 @@ Needs attention (High):
 | `analyzePair(oldWb, newWb, opts?)` | Sheet pairs, column matches and key suggestions (for a Setup UI). |
 | `compareWorkbooks(oldWb, newWb, opts?)` | Full comparison + risk checks → `CompareResult`. |
 | `runChecks(result, oldWb, newWb, opts?)` | Re-run the risk checks standalone. |
+| `planMerge(base, copyA, copyB, opts?)` | Three-way merge plan: pre-ticked auto-proposals plus conflicts to decide. Needs a key column (`MERGE_NO_KEY` otherwise). |
+| `resolveMerge(base, plan, resolutions, opts)` | Turn the plan + your decisions into a concrete change set. Throws `MERGE_UNRESOLVED` if any conflict is undecided. |
+| `previewImpact(base, changeSet)` | Totals before → after the merge. |
+| `buildMergeLog(plan, resolutions, labels)` | The rows of the "SheetLens Merge Log" sheet. |
+| `applyMergePatch(base, changeSet, opts)` | Write the merged file as a patched copy of the Original (`.xlsx`/`.xlsm`/`.csv`). Read the Original with `keepSourceBytes: true`. |
+| `buildReportModel(result, oldWb, newWb)` | Structured report data: Overview, All Changes, per-sheet marked views. |
+| `buildCopySummary(result)` | A short plain-text summary for WhatsApp/email. |
 
 `CompareResult` carries `counts`, a `findings` list (each with `rule`,
 `severity`, `title`, `message`), per-sheet-pair results (row map, row status,
@@ -120,7 +128,8 @@ const { bytes } = await applyMergePatch(base, changeSet, { sourceLabels: ['Ravi'
 //   deleted with formula ranges adjusted, a "SheetLens Merge Log" sheet added.
 ```
 
-CLI: `sheet-diff merge base.xlsx a.xlsx b.xlsx --resolve INV-1003=Ravi --extend-totals --out merged.xlsx`.
+CLI: `sheet-diff merge base.xlsx a.xlsx b.xlsx --resolve INV-1003=Copy1 --extend-totals --out merged.xlsx`
+— repeat `--resolve KEY=Copy1|Copy2|delete` for every conflict (`--out` refuses to run while any is undecided).
 
 ## Reports
 

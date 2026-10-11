@@ -4,6 +4,7 @@ import type { CompareResult, Scalar, Finding, CellChange } from '../types.js';
 import { RowState } from '../types.js';
 import { resolveCompareOptions, type CompareOptions } from '../options.js';
 import { compareCore } from '../compare/index.js';
+import { contrastCells, primaryPair } from '../compare/contrast.js';
 import type { CheckPair } from '../checks/context.js';
 import { rowKey } from '../merge/diff.js';
 import type {
@@ -62,13 +63,8 @@ export function buildReportModel(
     .filter((p): p is CheckPair & { newSheet: SheetIR } => (p.status === 'matched' || p.status === 'renamed') && !!p.newSheet)
     .map((p) => buildMarkedSheet(p, result, oldWb, newWb, options));
 
-  const primary = result.pairs.find((p) => p.key.mode !== 'order') ?? result.pairs[0];
-  // The contrast line reflects the primary data sheet (a naive same-address
-  // compare of it), not the sum across sheets (FR-RES-01).
-  const contrastCells = primary
-    ? (result.positionalBaseline[primary.id] ??
-      Object.values(result.positionalBaseline).reduce((a, b) => a + b, 0))
-    : 0;
+  const primary = primaryPair(result);
+  const contrast = contrastCells(result);
   const matchedBy = primary
     ? primary.key.mode === 'order'
       ? 'row order (no key column)'
@@ -85,7 +81,7 @@ export function buildReportModel(
     overview: {
       counts: result.counts,
       forInformation,
-      contrastCells,
+      contrastCells: contrast,
       attention: result.findings.filter((f) => f.severity === 'high'),
     },
     allChanges,
