@@ -129,7 +129,12 @@ const { bytes } = await applyMergePatch(base, changeSet, { sourceLabels: ['Ravi'
 ```
 
 CLI: `sheet-diff merge base.xlsx a.xlsx b.xlsx --resolve INV-1003=Copy1 --extend-totals --out merged.xlsx`
-— repeat `--resolve KEY=Copy1|Copy2|delete` for every conflict (`--out` refuses to run while any is undecided).
+— give one `--resolve KEY=CHOICE` per conflict. `CopyN` means "take that copy's side"
+(for a delete-vs-edit conflict that is *delete* if that copy deleted the row, or *keep the
+row with the edits* if it edited it); `delete` also resolves a delete-vs-edit conflict.
+The CLI never guesses: an unknown choice or key, a duplicate, a choice that doesn't fit the
+conflict, or `--resolve` without `--out` stops with an error (exit code 2) and writes nothing,
+and `--out` refuses to run while any conflict is undecided.
 
 ## Reports
 

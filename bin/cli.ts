@@ -10,7 +10,8 @@ import { resolveMerge } from '../src/merge/resolve.js';
 import { buildMergeLog } from '../src/merge/log.js';
 import { applyMergePatch } from '../src/patch/index.js';
 import { contrastCells } from '../src/compare/contrast.js';
-import type { Resolutions, ConflictResolution } from '../src/merge/types.js';
+import type { Resolutions } from '../src/merge/types.js';
+import { resolveFromArgs, ResolveArgError } from './resolve-args.js';
 import { writeFile } from 'node:fs/promises';
 import { isSheetDiffError } from '../src/errors.js';
 import type { CompareOptions } from '../src/options.js';
@@ -62,7 +63,8 @@ Options:
   --json             Emit machine-readable JSON instead of a human summary
   --key NAME         Force a key column (applied to every matched sheet)
   --password PW      Password for an encrypted file
-  --resolve K=CHOICE Resolve a conflict on key K (copy label / "delete")
+  --resolve K=CHOICE Resolve the conflict on key K: Copy1 or Copy2 (take that copy's
+                     side) or delete. Anything else is an error. Needs --out.
   --extend-totals    Extend total formulas to include new rows
   --out FILE         Write the merged .xlsx (requires all conflicts resolved)
   -h, --help         Show this help
@@ -133,22 +135,13 @@ async function runMerge(args: Args): Promise<void> {
   const labels: [string, string] = ['Copy 1', 'Copy 2'];
   const plan = planMerge(base, a, b, { labels });
 
+  if (args.resolve.length > 0 && !args.out) {
+    throw new ResolveArgError('--resolve only takes effect together with --out merged.xlsx.');
+  }
+
   // --out: resolve conflicts from --resolve flags and write the patched file.
   if (args.out) {
-    const conflicts: Record<string, ConflictResolution> = {};
-    const byKey = new Map<string, string>();
-    for (const r of args.resolve) {
-      const [k, v] = r.split('=');
-      if (k && v) byKey.set(k, v);
-    }
-    for (const c of plan.conflicts) {
-      if (!c.key) continue;
-      const choice = byKey.get(c.key);
-      if (choice === undefined) continue;
-      conflicts[c.id] =
-        choice === 'delete' ? 'delete' : choice === labels[1] || choice === 'Copy2' ? 'B' : 'A';
-    }
-    const resolutions: Resolutions = { conflicts };
+    const resolutions: Resolutions = { conflicts: resolveFromArgs(args.resolve, plan.conflicts) };
     const changeSet = resolveMerge(base, plan, resolutions, { extendTotals: args.extendTotals });
     const log = buildMergeLog(plan, resolutions, labels);
     const patch = await applyMergePatch(base, changeSet, {
@@ -254,6 +247,11 @@ function printSection(
 }
 
 main().catch((e: unknown) => {
+  if (e instanceof ResolveArgError) {
+    process.stderr.write(`Error: ${e.message}\n`);
+    process.exitCode = 2;
+    return;
+  }
   if (isSheetDiffError(e)) {
     process.stderr.write(`Error (${e.code}): ${e.message}\n`);
   } else {
