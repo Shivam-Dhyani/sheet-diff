@@ -1,7 +1,7 @@
 import { CellKind, type SheetIR, type StringPool, type WorkbookIR } from '../ir/types.js';
 import { getCell } from '../ir/sheet.js';
 import { cellIndex, rcToA1 } from '../ir/coords.js';
-import type { Finding, CompareResult, Severity } from '../types.js';
+import type { Finding, CompareResult, Severity, CellChange, Scalar } from '../types.js';
 import type { CompareOptions } from '../options.js';
 import type { CheckContext, CheckPair } from './context.js';
 import type { TableModel } from '../table/index.js';
@@ -647,7 +647,7 @@ function rowAndCellFindings(p: PairCtx, ctx: CheckContext, out: Finding[]): void
       column: ch.column,
       cells: ch.newCell ? [ch.newCell.ref] : [],
       title: changeTitle(ch.kind),
-      message: `${ch.column} for ${ch.key}: ${formatValue(ch.old, ch.column)} → ${formatValue(ch.new, ch.column)}.`,
+      message: cellEditMessage(ch),
       data: { kind: ch.kind },
     });
   }
@@ -662,6 +662,19 @@ function rowAndCellFindings(p: PairCtx, ctx: CheckContext, out: Finding[]): void
       data: { count: recalculated },
     });
   }
+}
+
+/**
+ * "Column for KEY: old → new." When a formula changed but a side has no saved value (a file
+ * written by openpyxl, or by a SheetLens merge — Excel recalculates those on open), show that
+ * side's formula rather than a misleading "(blank)".
+ */
+function cellEditMessage(ch: CellChange): string {
+  const missing = ch.kind === 'formula_changed' && (ch.old === null || ch.new === null);
+  const side = (value: Scalar, formula: string | undefined): string =>
+    value === null && formula !== undefined ? `=${formula}` : formatValue(value, ch.column);
+  const note = missing ? ' (A saved value is missing, so Excel will calculate it.)' : '';
+  return `${ch.column} for ${ch.key}: ${side(ch.old, ch.oldFormula)} → ${side(ch.new, ch.newFormula)}.${note}`;
 }
 
 function changeTitle(kind: string): string {

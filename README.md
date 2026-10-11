@@ -167,6 +167,9 @@ renderers live in the SheetLens app.
 - Password-protected files need the optional `officecrypto-tool` dependency.
 - Merge patch mode supports `.xlsx`/`.xlsm` and `.csv`; `.xls` originals must be
   re-saved as `.xlsx` first.
+- A formula saved without its calculated result (files from openpyxl and similar tools, and the
+  merged files SheetLens writes — Excel calculates them when it opens them) is read with its
+  formula but no value. Compare treats an unchanged one as "recalculated", not a change.
 
 ## Privacy
 

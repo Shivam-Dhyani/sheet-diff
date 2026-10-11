@@ -9,6 +9,7 @@ import { sniffFormat } from './detect.js';
 import { parseCsv, parseCsvNumber } from './csv.js';
 import { readWithSheetJs } from './sheetjs-adapter.js';
 import { readFeatures } from './features.js';
+import { hasFormulaOnlyCells } from './formula-scan.js';
 
 const MAX_UNCOMPRESSED = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
 const MAX_PARTS = 10000;
@@ -50,11 +51,17 @@ export async function readWorkbook(bytes: Uint8Array, opts: ReadOptions): Promis
     guardZip(data);
   }
 
+  // A formula saved without its cached value (openpyxl, many exporters, SheetLens's own
+  // merge output) is dropped by SheetJS unless stubs are on; see formula-scan.ts.
+  const sheetStubs =
+    !valuesOnly && sniff.container === 'zip' && formulaOnlyCellsPresent(data);
+
   const wb = readWithSheetJs(data, {
     fileName: opts.fileName,
     format: sniff.format,
     valuesOnly,
     compareNumberFormats: false,
+    sheetStubs,
     ...(opts.onProgress ? { onProgress: opts.onProgress } : {}),
     ...(opts.signal ? { signal: opts.signal } : {}),
   });
@@ -71,6 +78,15 @@ export async function readWorkbook(bytes: Uint8Array, opts: ReadOptions): Promis
 
   if (opts.keepSourceBytes) wb.sourceBytes = data;
   return wb;
+}
+
+/** The scan is an optimisation guard: if it cannot run, read the file the usual way. */
+function formulaOnlyCellsPresent(bytes: Uint8Array): boolean {
+  try {
+    return hasFormulaOnlyCells(bytes);
+  } catch {
+    return false;
+  }
 }
 
 function guardZip(bytes: Uint8Array): void {

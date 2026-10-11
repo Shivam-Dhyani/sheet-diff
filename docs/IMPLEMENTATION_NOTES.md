@@ -35,6 +35,30 @@ exercised by the type system.
 Record the version in `VERSIONS.md`. This restores the TDD's memory profile for
 very large sheets.
 
+## Formulas saved without a cached value (SheetJS `sheetStubs`)
+
+Excel always stores a formula's last result next to it (`<f>…</f><v>…</v>`). Other writers
+leave it out — openpyxl (an empty `<v/>`), many exporters, and the files SheetLens writes for a
+merge (Excel recalculates them on open, `fullCalcOnLoad`). SheetJS **drops such a cell entirely**
+unless `sheetStubs: true`, so the reader saw those formulas as empty cells: re-opening a merged
+file, or comparing it with its Original, lost every formula. (Verified on SheetJS 0.18.5: a
+`<c><f>1+1</f></c>`, an `<f>…</f><v></v>` and a shared-formula child are all absent without
+stubs; with stubs they arrive as `t:'z'` cells carrying `f`, and the shared formula is expanded.
+A cell with a `t` attribute, e.g. a formula returning `""` written `t="str"`, is kept either way.)
+
+`sheetStubs` also materialises every styled-but-blank cell. Measured on a 100,000-row sheet with
+1.6 M of them: read time 6–8 s → 14 s, heap +79 MB → +229 MB. So it is **not** switched on
+globally. `src/read/formula-scan.ts` (`hasFormulaOnlyCells`) scans each worksheet's XML — one
+sheet inflated at a time, in 8 MB windows, stopping at the first hit — and the reader enables
+stubs only for a file that contains such a cell. Cost on a file that does not (every
+Excel-saved file): about 0.9 s on that same 100k-row file, roughly 10 % of its read time.
+A file that does need stubs is read about 80 % slower, but correctly.
+
+A formula-only cell reads as an empty value with its formula text. Compare therefore treats an
+unchanged formula as *recalculated* (not a real change), and a changed one is reported by its
+formulas (`formula changed`, "A saved value is missing, so Excel will calculate it") rather than
+as "→ (blank)". `valuesOnly` reads and `.xls`/CSV are unaffected.
+
 ## officecrypto-tool (TDD §4, decryption)
 
 `officecrypto-tool` is declared as an **optional** dependency. It failed pnpm's

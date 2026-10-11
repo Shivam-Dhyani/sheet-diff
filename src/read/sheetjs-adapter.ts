@@ -12,6 +12,12 @@ export interface AdapterOptions {
   format: WorkbookFormat;
   valuesOnly: boolean;
   compareNumberFormats: boolean;
+  /**
+   * Keep cells SheetJS would otherwise drop — notably a formula with no cached value.
+   * Costly on heavily formatted sheets (it also materialises every styled blank cell),
+   * so the reader sets it only when the file needs it (see formula-scan.ts).
+   */
+  sheetStubs?: boolean;
   onProgress?: (p: Progress) => void;
   signal?: AbortFlag;
 }
@@ -60,6 +66,7 @@ export function readWithSheetJs(bytes: Uint8Array, opts: AdapterOptions): Workbo
       cellNF: true,
       cellDates: false,
       cellStyles: false,
+      sheetStubs: opts.sheetStubs ?? false,
     });
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
