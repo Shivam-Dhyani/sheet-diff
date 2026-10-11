@@ -224,6 +224,27 @@ function compareSelf(
   };
 }
 
+/**
+ * The row keys that already exist in a base sheet, using the same key detection
+ * the merge uses. Lets a caller refuse a new key that would clash with a row.
+ */
+export function baseRowKeys(
+  base: WorkbookIR,
+  sheetName: string,
+  opts?: Partial<CompareOptions>,
+): Set<string> {
+  const keys = new Set<string>();
+  const sheet = base.sheets.find((s) => s.name === sheetName);
+  if (!sheet) return keys;
+  const table = detectTable(sheet, base.pool);
+  const { keyCols } = compareSelf(sheet, base, table, resolveCompareOptions(opts));
+  for (let r = table.dataStart; r <= table.dataEnd; r++) {
+    const key = rowKey(sheet, base.pool, keyCols, r);
+    if (key !== '') keys.add(key);
+  }
+  return keys;
+}
+
 /** A Summary/total formula: outside a table, referencing a table range. */
 function isTotalFormula(formula: string, tableSheets: Set<string>, hostSheet: string): boolean {
   for (const t of tokenize(formula)) {

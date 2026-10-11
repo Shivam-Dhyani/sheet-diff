@@ -132,6 +132,10 @@ function classifySheet(
           aCells: ra.cells,
           bCells: rb.cells,
           afterKey: ra.afterKey,
+          bAfterKey: rb.afterKey,
+          aSourceRow: ra.sourceRow,
+          bSourceRow: rb.sourceRow,
+          keyColumns: da.keyColumns,
         });
       }
     }

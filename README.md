@@ -78,7 +78,7 @@ Needs attention (High):
 | `compareWorkbooks(oldWb, newWb, opts?)` | Full comparison + risk checks → `CompareResult`. |
 | `runChecks(result, oldWb, newWb, opts?)` | Re-run the risk checks standalone. |
 | `planMerge(base, copyA, copyB, opts?)` | Three-way merge plan: pre-ticked auto-proposals plus conflicts to decide. Needs a key column (`MERGE_NO_KEY` otherwise). |
-| `resolveMerge(base, plan, resolutions, opts)` | Turn the plan + your decisions into a concrete change set. Throws `MERGE_UNRESOLVED` if any conflict is undecided. |
+| `resolveMerge(base, plan, resolutions, opts)` | Turn the plan + your decisions into a concrete change set. Throws `MERGE_UNRESOLVED` if any conflict is undecided, and `MERGE_INVALID_RESOLUTION` if an answer doesn't fit its conflict (e.g. `'delete'` on a cell conflict, or a new row key that is already taken). |
 | `previewImpact(base, changeSet)` | Totals before → after the merge. |
 | `buildMergeLog(plan, resolutions, labels)` | The rows of the "SheetLens Merge Log" sheet. |
 | `applyMergePatch(base, changeSet, opts)` | Write the merged file as a patched copy of the Original (`.xlsx`/`.xlsm`/`.csv`). Read the Original with `keepSourceBytes: true`. |
@@ -128,10 +128,26 @@ const { bytes } = await applyMergePatch(base, changeSet, { sourceLabels: ['Ravi'
 //   deleted with formula ranges adjusted, a "SheetLens Merge Log" sheet added.
 ```
 
+Conflict answers (`resolutions.conflicts[conflict.id]`):
+
+| Conflict | Answers |
+|---|---|
+| `CELL` (both changed one cell) | `'A'` · `'B'` · `'base'` · `{ typed: value }` |
+| `RELATED_EDITS` (different cells of one row) | `'A'` · `'B'` · `'base'` · `'both'` (needs `acknowledgeRelated[id] = true`) |
+| `DELETE_EDIT` (one copy deleted, the other edited) | `'delete'` · `'keepEdits'` · `'base'` |
+| `ADD_ADD` (both added the same key, different content) | `'A'` · `'B'` · `{ keepBoth: { aKey, bKey } }` |
+
+`keepBoth` keeps both rows under different keys — Copy 1's row gets `aKey`, Copy 2's gets
+`bKey` (either may keep the original key). The keys must differ and must not clash with a row
+in the Original or another new row; a composite key is written as its parts joined by `" / "`.
+Each kept row lands where its own copy put it, with its formulas re-anchored to that row.
+
 CLI: `sheet-diff merge base.xlsx a.xlsx b.xlsx --resolve INV-1003=Copy1 --extend-totals --out merged.xlsx`
 — give one `--resolve KEY=CHOICE` per conflict. `CopyN` means "take that copy's side"
 (for a delete-vs-edit conflict that is *delete* if that copy deleted the row, or *keep the
-row with the edits* if it edited it); `delete` also resolves a delete-vs-edit conflict.
+row with the edits* if it edited it; for an add/add conflict it keeps that copy's row);
+`delete` also resolves a delete-vs-edit conflict, and `both:NEWKEY` resolves an add/add
+conflict by keeping both rows — Copy 1's under the original key, Copy 2's under `NEWKEY`.
 The CLI never guesses: an unknown choice or key, a duplicate, a choice that doesn't fit the
 conflict, or `--resolve` without `--out` stops with an error (exit code 2) and writes nothing,
 and `--out` refuses to run while any conflict is undecided.

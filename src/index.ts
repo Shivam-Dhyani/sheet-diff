@@ -36,6 +36,8 @@ export type {
   CellResolution,
   RelatedResolution,
   DeleteEditResolution,
+  AddAddResolution,
+  KeepBothResolution,
   MergeChangeSet,
   ChangeSetCellEdit,
   ChangeSetRowInsert,

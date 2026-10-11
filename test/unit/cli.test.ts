@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
+import { buildXlsx, type CellSpec } from '../helpers/build.js';
 import { readWorkbook, getCell } from '../../src/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -123,3 +125,78 @@ function cliRun(...args: string[]): { status: number | null; stdout: string; std
     expect(existsSync(out)).toBe(false);
   });
 }, 60_000);
+
+// Both copies add INV-4 with different content: an add/add conflict. The shipped fixtures
+// have none, so build the three files here.
+describe('CLI merge --resolve on an add/add conflict', () => {
+  const header: CellSpec[] = ['Invoice No', 'Customer', 'Qty', 'Rate', 'Amount'];
+  const sale = (n: number, id: string, who: string, qty: number): CellSpec[] => [
+    id, who, qty, 100, { f: `C${n}*D${n}`, v: qty * 100 },
+  ];
+  const book = (rows: CellSpec[][]): Uint8Array =>
+    buildXlsx([
+      { name: 'Sales', rows: [header, ...rows] },
+      { name: 'Summary', rows: [['Total', { f: 'SUM(Sales!E2:E4)', v: 0 }], ['Count', { f: 'COUNT(Sales!E2:E4)', v: 3 }]] },
+    ]);
+  const orig = [sale(2, 'INV-1', 'Alpha', 2), sale(3, 'INV-2', 'Beta', 3), sale(4, 'INV-3', 'Gamma', 1)];
+
+  const tmp = mkdtempSync(join(tmpdir(), 'sheet-diff-addadd-'));
+  const files = ['orig', 'ravi', 'priya'].map((n) => join(tmp, `${n}.xlsx`));
+  writeFileSync(files[0]!, book(orig));
+  writeFileSync(files[1]!, book([...orig, sale(5, 'INV-4', 'Delta (Ravi)', 5)]));
+  writeFileSync(files[2]!, book([...orig, sale(5, 'INV-4', 'Delta (Priya)', 7)]));
+  const out = join(tmp, 'merged.xlsx');
+  const run = (...resolve: string[]) =>
+    cliRun('merge', ...files, ...resolve.flatMap((s) => ['--resolve', s]), '--extend-totals', '--out', out);
+
+  afterEach(() => rmSync(out, { force: true }));
+  afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+
+  /** [key, customer] for every row of Sales in the merged file. */
+  async function salesRows(): Promise<string[][]> {
+    const wb = await readWorkbook(new Uint8Array(readFileSync(out)), { fileName: 'merged.xlsx' });
+    const s = wb.sheets.find((x) => x.name === 'Sales')!;
+    const rows: string[][] = [];
+    for (let r = 1; r < s.rows; r++) {
+      const key = getCell(s, wb.pool, r, 0).text;
+      if (key) rows.push([key, getCell(s, wb.pool, r, 1).text]);
+    }
+    return rows;
+  }
+
+  it('lists the conflict and how to answer it when nothing is resolved', () => {
+    const r = cliRun('merge', ...files);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/1 conflict\(s\) to resolve/);
+    expect(r.stdout).toMatch(/\[ADD_ADD\] INV-4/);
+    expect(r.stdout).toMatch(/both:NEWKEY/);
+  });
+
+  it.each([
+    ['Copy1', [['INV-4', 'Delta (Ravi)']]],
+    ['Copy2', [['INV-4', 'Delta (Priya)']]],
+    [
+      'both:INV-4-B',
+      [
+        ['INV-4', 'Delta (Ravi)'],
+        ['INV-4-B', 'Delta (Priya)'],
+      ],
+    ],
+  ])('INV-4=%s keeps the right row(s) in the merged file', async (answer, expected) => {
+    const r = run(`INV-4=${answer}`);
+    expect(r.status).toBe(0);
+    expect((await salesRows()).slice(3)).toEqual(expected);
+  });
+
+  it.each([
+    ['delete (it was added, not deleted)', 'INV-4=delete', 2, /ADD_ADD conflict/],
+    ['both: with no key', 'INV-4=both:', 2, /needs the new key/],
+    ['a new key equal to the old one', 'INV-4=both:INV-4', 2, /must differ/],
+    ['a new key that is already a row in the Original', 'INV-4=both:INV-2', 2, /"INV-2" is already used/],
+  ])('refuses %s: exit %i, nothing written', (_name, spec, status, message) => {
+    const r = run(spec);
+    expect(r.status).toBe(status);
+    expect(r.stderr).toMatch(message);
+    expect(existsSync(out)).toBe(false);
+  });
+});

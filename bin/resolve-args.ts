@@ -8,12 +8,17 @@ export class ResolveArgError extends Error {
   }
 }
 
-type Choice = 'copy1' | 'copy2' | 'delete';
+type Choice = 'copy1' | 'copy2' | 'delete' | { both: string };
 
-const CHOICES = 'Copy1, Copy2 or delete';
+const CHOICES = 'Copy1, Copy2, delete, or both:NEWKEY for an add/add conflict';
 
-/** "Copy1", "copy 1", "COPY-1" → copy1; "delete" → delete; anything else → null. */
+/**
+ * "Copy1", "copy 1", "COPY-1" → copy1; "delete" → delete; "both:INV-9-B" → keep both,
+ * giving Copy 2's row the key INV-9-B (the key is taken as typed); else null.
+ */
 function parseChoice(raw: string): Choice | null {
+  const both = /^\s*both\s*:(.*)$/is.exec(raw);
+  if (both) return { both: both[1]!.trim() };
   const c = raw.trim().toLowerCase().replace(/[\s_-]+/g, '');
   return c === 'copy1' || c === 'copy2' || c === 'delete' ? c : null;
 }
@@ -70,6 +75,12 @@ export function resolveFromArgs(
 
 function toResolution(c: Conflict, choice: Choice): ConflictResolution {
   const key = c.key ?? c.id;
+  if (typeof choice === 'object' && c.type !== 'ADD_ADD') {
+    throw new ResolveArgError(
+      `--resolve ${key}=both:…: only an ADD_ADD conflict (both copies added the same key) can keep both; ` +
+        `${key} is a ${c.type} conflict. Use Copy1 or Copy2.`,
+    );
+  }
   switch (c.type) {
     case 'CELL':
     case 'RELATED_EDITS':
@@ -91,11 +102,28 @@ function toResolution(c: Conflict, choice: Choice): ConflictResolution {
       return side === c.deletedBy ? 'delete' : 'keepEdits';
     }
 
-    case 'ADD_ADD':
+    case 'ADD_ADD': {
+      // Both copies added a row with this key. CopyN keeps that copy's row; both:NEWKEY
+      // keeps both, Copy 1's under the original key and Copy 2's under NEWKEY.
+      if (choice === 'delete') {
+        throw new ResolveArgError(
+          `--resolve ${key}=delete: ${key} is an ADD_ADD conflict (both copies added it). ` +
+            `Use Copy1, Copy2 or both:NEWKEY.`,
+        );
+      }
+      if (typeof choice === 'object') {
+        if (choice.both === '') {
+          throw new ResolveArgError(`--resolve ${key}=both: needs the new key for Copy 2's row, e.g. both:${key}-B.`);
+        }
+        if (choice.both === key) {
+          throw new ResolveArgError(`--resolve ${key}=both:${key}: the new key must differ from ${key}.`);
+        }
+        return { keepBoth: { aKey: key, bKey: choice.both } };
+      }
+      return choice === 'copy1' ? 'A' : 'B';
+    }
+
     case 'STRUCTURE':
-      throw new ResolveArgError(
-        `--resolve ${key}: ${c.type} conflicts cannot be applied from the command line yet ` +
-          `(the merge engine does not write them). Reconcile this one by hand.`,
-      );
+      throw new ResolveArgError(`--resolve ${key}: ${c.type} conflicts cannot be resolved from the command line.`);
   }
 }

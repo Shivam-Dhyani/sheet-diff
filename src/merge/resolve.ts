@@ -12,8 +12,10 @@ import type {
   CellEdit,
   MergeSource,
   CellResolution,
+  AddAddResolution,
 } from './types.js';
-import { computeExtendRanges } from './impact.js';
+import { baseRowKeys, computeExtendRanges } from './impact.js';
+import { addAddInserts, assertChoiceFits } from './add-add.js';
 
 export interface ResolveOptions {
   extendTotals: boolean;
@@ -63,10 +65,28 @@ export function resolveMerge(
     }
   }
 
+  // Keys already taken on a sheet: the Original's rows plus every row we insert.
+  // Built lazily, only when an ADD_ADD conflict needs it.
+  const usedKeys = new Map<string, Set<string>>();
+  const usedOn = (sheet: string): Set<string> => {
+    let used = usedKeys.get(sheet);
+    if (!used) {
+      used = baseRowKeys(base, sheet, compareOpts);
+      for (const ins of rowInserts) if (ins.sheet === sheet) used.add(ins.key);
+      usedKeys.set(sheet, used);
+    }
+    return used;
+  };
+
   // Conflicts.
   for (const c of plan.conflicts) {
     const choice = resolutions.conflicts[c.id]!;
-    applyConflict(c, choice, resolutions, cellEdits, rowDeletes);
+    assertChoiceFits(c, choice);
+    if (c.type === 'ADD_ADD') {
+      rowInserts.push(...addAddInserts(c, choice as AddAddResolution, usedOn(c.sheet)));
+    } else {
+      applyConflict(c, choice, resolutions, cellEdits, rowDeletes);
+    }
   }
 
   const changeSet: MergeChangeSet = { cellEdits, rowInserts, rowDeletes, extendRanges: [] };
@@ -125,9 +145,7 @@ function applyConflict(
       return;
     }
     case 'ADD_ADD':
-      // 'A' | 'B' choose one copy's row; handled as an insert in the UI layer.
-      // (Not exercised by the Phase-1 fixture; kept minimal.)
-      return;
+      return; // applied by resolveMerge via addAddInserts (it needs the sheet's taken keys)
     case 'STRUCTURE':
       return;
   }

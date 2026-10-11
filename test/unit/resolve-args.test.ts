@@ -40,6 +40,23 @@ describe('resolveFromArgs — valid answers', () => {
     expect(resolveFromArgs(['INV-1003=COPY-1'], all)[cell.id]).toBe('A');
   });
 
+  it('an add/add conflict: Copy1 / Copy2 keep that copy\'s row', () => {
+    expect(resolveFromArgs(['INV-1031=Copy1'], all)[addAdd.id]).toBe('A');
+    expect(resolveFromArgs(['INV-1031=copy 2'], all)[addAdd.id]).toBe('B');
+  });
+
+  it('an add/add conflict: both:NEWKEY keeps both, Copy 2\'s row under the new key', () => {
+    expect(resolveFromArgs(['INV-1031=both:INV-1031-B'], all)[addAdd.id]).toEqual({
+      keepBoth: { aKey: 'INV-1031', bKey: 'INV-1031-B' },
+    });
+  });
+
+  it('the new key is taken as typed (spaces, case and punctuation kept; trimmed at the ends)', () => {
+    expect(resolveFromArgs(['INV-1031=BOTH:  Inv 1031_b '], all)[addAdd.id]).toEqual({
+      keepBoth: { aKey: 'INV-1031', bKey: 'Inv 1031_b' },
+    });
+  });
+
   it('"delete" resolves a delete-vs-edit conflict', () => {
     expect(resolveFromArgs(['INV-1019=delete'], all)[delEdit.id]).toBe('delete');
   });
@@ -71,7 +88,7 @@ describe('resolveFromArgs — rejects instead of guessing', () => {
     expect(err(['INV-1003=Ravi'])).toMatch(/Unknown choice "Ravi"/);
     expect(err(['INV-1003=Priya'])).toMatch(/Unknown choice "Priya"/);
     expect(err(['INV-1003=copy3'])).toMatch(/Unknown choice/);
-    expect(err(['INV-1003=base'])).toMatch(/Use Copy1, Copy2 or delete/);
+    expect(err(['INV-1003=base'])).toMatch(/Use Copy1, Copy2, delete, or both:NEWKEY/);
   });
 
   it('malformed arguments', () => {
@@ -102,8 +119,19 @@ describe('resolveFromArgs — rejects instead of guessing', () => {
     expect(err(['INV-1008=delete'])).toMatch(/RELATED_EDITS/);
   });
 
-  it('ADD_ADD, which the engine cannot apply yet', () => {
-    expect(err(['INV-1031=Copy1'])).toMatch(/ADD_ADD conflicts cannot be applied/);
+  it('"delete" on an add/add conflict', () => {
+    expect(err(['INV-1031=delete'])).toMatch(/ADD_ADD conflict \(both copies added it\)/);
+  });
+
+  it('keep-both on a conflict that is not add/add', () => {
+    expect(err(['INV-1003=both:INV-1003-B'])).toMatch(/only an ADD_ADD conflict/);
+    expect(err(['INV-1019=both:x'])).toMatch(/DELETE_EDIT/);
+  });
+
+  it('keep-both without a usable new key', () => {
+    expect(err(['INV-1031=both:'])).toMatch(/needs the new key/);
+    expect(err(['INV-1031=both:   '])).toMatch(/needs the new key/);
+    expect(err(['INV-1031=both:INV-1031'])).toMatch(/must differ from INV-1031/);
   });
 
   it('a delete-vs-edit conflict where the deleter is unknown (defensive)', () => {

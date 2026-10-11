@@ -57,14 +57,16 @@ const HELP = `sheet-diff — compare two spreadsheets (identity-aware, formula-a
 Usage:
   sheet-diff <old> <new> [--json] [--key "Invoice No"] [--password PW]
   sheet-diff merge <base> <copy1> <copy2> [--json]
-            [--resolve KEY=Copy1|Copy2|delete]... [--extend-totals] [--out merged.xlsx]
+            [--resolve KEY=Copy1|Copy2|delete|both:NEWKEY]... [--extend-totals] [--out merged.xlsx]
 
 Options:
   --json             Emit machine-readable JSON instead of a human summary
   --key NAME         Force a key column (applied to every matched sheet)
   --password PW      Password for an encrypted file
   --resolve K=CHOICE Resolve the conflict on key K: Copy1 or Copy2 (take that copy's
-                     side) or delete. Anything else is an error. Needs --out.
+                     side) or delete. If both copies added the same key, both:NEWKEY
+                     keeps both rows (Copy 2's gets NEWKEY). Anything else is an
+                     error. Needs --out.
   --extend-totals    Extend total formulas to include new rows
   --out FILE         Write the merged .xlsx (requires all conflicts resolved)
   -h, --help         Show this help
@@ -178,7 +180,7 @@ async function runMerge(args: Args): Promise<void> {
     else if (p.kind === 'row_add') w(`  • add ${p.key} after ${p.afterKey} (${p.source})\n`);
     else w(`  • delete ${p.key} (${p.source})\n`);
   }
-  w('\n(Resolve each conflict with --resolve KEY=Copy1|Copy2|delete, then add --out merged.xlsx to write the patched copy.)\n');
+  w('\n(Resolve each conflict with --resolve KEY=Copy1|Copy2|delete|both:NEWKEY, then add --out merged.xlsx to write the patched copy.)\n');
 }
 
 function toJson(result: CompareResult): unknown {
@@ -254,8 +256,10 @@ main().catch((e: unknown) => {
   }
   if (isSheetDiffError(e)) {
     process.stderr.write(`Error (${e.code}): ${e.message}\n`);
-  } else {
-    process.stderr.write(`Unexpected error: ${String((e as Error)?.message ?? e)}\n`);
+    // A bad answer to a conflict is a usage error, like a bad --resolve argument.
+    process.exitCode = e.code === 'MERGE_INVALID_RESOLUTION' ? 2 : 1;
+    return;
   }
+  process.stderr.write(`Unexpected error: ${String((e as Error)?.message ?? e)}\n`);
   process.exitCode = 1;
 });

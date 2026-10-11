@@ -1,5 +1,6 @@
 import type { Scalar } from '../types.js';
 import type { MergePlan, Resolutions, MergeLogRow, MergeSource } from './types.js';
+import { isKeepBoth } from './add-add.js';
 
 function label(source: MergeSource, labels: [string, string]): string {
   if (source === 'A') return labels[0];
@@ -98,6 +99,29 @@ export function buildMergeLog(
           decision: `resolved: ${choice}`,
           note: 'related edits',
         });
+      }
+    } else if (c.type === 'ADD_ADD') {
+      const key = c.key ?? '';
+      const inserted = (src: 'A' | 'B', finalKey: string, how: string): void => {
+        const after = (src === 'A' ? c.afterKey : (c.bAfterKey ?? c.afterKey)) ?? null;
+        push({
+          sheet: c.sheet,
+          key: finalKey,
+          column: '(new row)',
+          oldValue: null,
+          newValue: finalKey,
+          source: label(src, labels),
+          decision: how,
+          note: `add/add conflict · ${after ? `inserted after ${after}` : 'inserted at top'}${
+            finalKey !== key ? ` · was ${key} in ${label(src, labels)}` : ''
+          }`,
+        });
+      };
+      if (isKeepBoth(choice)) {
+        inserted('A', choice.keepBoth.aKey.trim(), 'resolved: keep both');
+        inserted('B', choice.keepBoth.bKey.trim(), 'resolved: keep both');
+      } else if (choice === 'A' || choice === 'B') {
+        inserted(choice, key, `resolved: ${choice}`);
       }
     } else if (c.type === 'DELETE_EDIT') {
       if (choice === 'delete') {

@@ -17,6 +17,7 @@ export type SheetDiffErrorCode =
   | 'MERGE_NO_KEY'
   | 'MERGE_XLS'
   | 'MERGE_UNRESOLVED'
+  | 'MERGE_INVALID_RESOLUTION'
   | 'PATCH_SELFCHECK_FAILED'
   | 'REPORT_FAILED'
   | 'ABORTED';

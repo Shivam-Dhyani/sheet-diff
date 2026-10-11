@@ -60,10 +60,18 @@ export interface Conflict {
   deletedBy?: MergeSource;
   editedBy?: MergeSource;
   edits?: CellEdit[];
-  // ADD_ADD
+  // ADD_ADD — both copies added a row with this key but different content.
   aCells?: RowCell[];
   bCells?: RowCell[];
+  /** Where Copy 1's row sits (key of the preceding row of the Original; null = top). */
   afterKey?: string | null;
+  /** Where Copy 2's row sits. */
+  bAfterKey?: string | null;
+  /** 0-based source rows in each copy (to re-anchor the rows' formulas). */
+  aSourceRow?: number;
+  bSourceRow?: number;
+  /** The sheet's key column header(s); needed to give a row a new key. */
+  keyColumns?: string[];
 }
 
 export interface StructureDiff {
@@ -86,7 +94,16 @@ export interface MergePlan {
 export type CellResolution = 'A' | 'B' | 'base' | { typed: Scalar };
 export type RelatedResolution = 'A' | 'B' | 'base' | 'both';
 export type DeleteEditResolution = 'delete' | 'keepEdits' | 'base';
-export type AddAddResolution = 'A' | 'B' | 'both';
+/**
+ * Keep both added rows under different keys (FR-MRG-03). Each key is the row's
+ * final key: Copy 1's row gets `aKey`, Copy 2's row gets `bKey`. They must differ,
+ * and neither may clash with a row that already exists. For a composite key,
+ * separate the parts with " / " (the engine's display form).
+ */
+export interface KeepBothResolution {
+  keepBoth: { aKey: string; bKey: string };
+}
+export type AddAddResolution = 'A' | 'B' | KeepBothResolution;
 export type ConflictResolution =
   | CellResolution
   | RelatedResolution
